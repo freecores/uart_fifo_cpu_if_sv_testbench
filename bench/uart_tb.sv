@@ -120,7 +120,7 @@ module uart_tb();
           #(1/baud_rate)s;
           //8 bits of data
           for(uint8 i=0; i<8; i++) begin
-            uart_.txd = data_bits[7-i];
+            uart_.txd = data_bits[i]; //least significant bit first.
             #(1/baud_rate)s;
           end
           //1 stop bit
@@ -154,11 +154,10 @@ module uart_tb();
           #(0.5 * 1/baud_rate)s;
           if ( uart_.rxd == 0 ) begin
             logic[7:0] data_bits;
-            uint32     bit_count = 7;
-            //read in 8 data bits, MSBit first, sampling in the center of the bit period.
-            repeat(8) begin
+            //read in 8 data bits, LSBit first, sampling in the center of the bit period.
+            for(uint8 i=0; i<8; i++) begin
               #( 1/baud_rate )s;
-              data_bits[ bit_count-- ] = uart_.rxd;
+              data_bits[i] = uart_.rxd;
             end
             //check stop bit.
             #( 1/baud_rate )s;

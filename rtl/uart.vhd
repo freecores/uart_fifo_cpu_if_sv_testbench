@@ -9,7 +9,7 @@
 --             Serial UART with byte wide register interface for control/status, data, and baud rate.
 --             Transmit(Tx) and Receive(Rx) data is FIFO buffered. Tx and Rx FIFO size configurable independently.
 --             Currently only supports no parity, 8 data bits, 1 stop bit (N81).
---             Data is sent most significant bit first.
+--             Data is sent least significant bit first.
 --             Baud rate divisor set via 16 bit register, allowing a wide range of baud rates and system clocks.
 --
 --             Future:
@@ -259,16 +259,16 @@ begin
             if tx_bit_enable then
               txd           := '0';
               tx_state      := DATA;
-              tx_data_count := 7;
+              tx_data_count := 0;
             end if;
-          --output 8 data bits
+          --output 8 data bits, least significant bit first.
           when DATA =>
             if tx_bit_enable then
               txd := tx_fifo_read_data(tx_data_count);
-              if tx_data_count = 0 then
+              if tx_data_count = 7 then
                 tx_state := STOP;
               else
-                tx_data_count := tx_data_count - 1;
+                tx_data_count := tx_data_count + 1;
               end if;
             end if;
           --output 1 stop bit
@@ -306,16 +306,16 @@ begin
               rx_state := IDLE;
             elsif rx_bit_enable then
               rx_state      := DATA;
-              rx_data_count := 7;
+              rx_data_count := 0;
             end if;
           --read in 8 data bits.
           when DATA =>
             if rx_bit_enable then
               rx_fifo_write_data(rx_data_count) <= rxd;
-              if rx_data_count = 0 then
+              if rx_data_count = 7 then
                 rx_state := STOP;
               else
-                rx_data_count := rx_data_count - 1;
+                rx_data_count := rx_data_count + 1;
               end if;
             end if;
           --check stop bit is '1'. If not, set the rx error flag.
