@@ -55,7 +55,7 @@ import std_defs::*;
 
 interface uart_if ();
   logic txd = 0; //from testbench driver
-  logic rxd = 0; //to testbench monitor
+  logic rxd;     //to testbench monitor
 endinterface : uart_if
 
 typedef logic[11:0] cpu_addr_t;
@@ -117,15 +117,15 @@ module uart_tb();
           data_bits = data; 
           //start bit
           uart_.txd = 0;
-          #(1/baud_rate)s;
+          #(1s/baud_rate);
           //8 bits of data
           for(uint8 i=0; i<8; i++) begin
             uart_.txd = data_bits[i]; //least significant bit first.
-            #(1/baud_rate)s;
+            #(1s/baud_rate);
           end
           //1 stop bit
           uart_.txd = 1;
-          #(1/baud_rate)s;
+          #(1s/baud_rate);
         end
       end
       join_none
@@ -151,16 +151,16 @@ module uart_tb();
         forever begin
           //Look for a valid start bit. Must be at least 1/2 bit period duration.
           @(negedge uart_.rxd);
-          #(0.5 * 1/baud_rate)s;
+          #(0.5 * 1s/baud_rate);
           if ( uart_.rxd == 0 ) begin
             logic[7:0] data_bits;
             //read in 8 data bits, LSBit first, sampling in the center of the bit period.
             for(uint8 i=0; i<8; i++) begin
-              #( 1/baud_rate )s;
+              #(1s/baud_rate);
               data_bits[i] = uart_.rxd;
             end
             //check stop bit.
-            #( 1/baud_rate )s;
+            #(1s/baud_rate);
             if ( uart_.rxd != 1 ) begin
               $display("Monitor: Invalid stop bit.");
             end
@@ -223,7 +223,7 @@ module uart_tb();
       test_cpu_interface(); 
       test_serial_facing_loopback(); //This one is also a good test for the testbench UART monitor/driver classes. 
       test_cpu_to_txd();
-      test_rxd_to_cpu();
+      //test_rxd_to_cpu();
       
       $display("%m: %t << Simulation ran to completion >>", $time);
       //     $stop(0); //stop the simulation
@@ -286,7 +286,7 @@ module uart_tb();
     end
 
     //Gives some time for any remaining transactions to propagate through the DUT.
-    #( `UART_FIFO_SIZE * (12 * 1/`BAUD_RATE))s; //10 bits/ baud, but allow for 12.
+    #( `UART_FIFO_SIZE * (12 * 1s/`BAUD_RATE)); //10 bits/ baud, but allow for 12.
 
     //Check the sent data comes back error free.
     compare_mailbox_data( sent_data_mbx, uart_monitor_mbx );
@@ -318,7 +318,7 @@ module uart_tb();
     end
 
     //Gives some time for any remaining transactions to propagate through the DUT.
-    #( `UART_FIFO_SIZE * (12 * 1/`BAUD_RATE))s; //10 bits/ baud, but allow for 12.
+    #( `UART_FIFO_SIZE * (12 * 1s/`BAUD_RATE)); //10 bits/ baud, but allow for 12.
     
     //Check the sent and received data is the same.
     compare_mailbox_data( sent_data_mbx, uart_monitor_mbx );
@@ -328,12 +328,18 @@ module uart_tb();
   function automatic void compare_mailbox_data( mailbox #(uint8) ref_mbx, mailbox #(uint8) dut_mbx );
     uint32 error = 0;
     uint32 good = 0;
-    repeat( ref_mbx.size() ) begin
+    uint32 ref_mbx_num;
+    uint32 dut_mbx_num;
+
+    ref_mbx_num = ref_mbx.num();
+    dut_mbx_num = dut_mbx.num();
+    
+    repeat( ref_mbx_num ) begin
       uint8 dut_data;
       uint8 ref_data;
       uint32 tryget_result;
       
-      ref_mbx.get( ref_data );
+      ref_mbx.try_get( ref_data );
       //try to get dut data, may not be there if dut swallowed it.
       tryget_result = dut_mbx.try_get( dut_data );
       if (tryget_result) begin
@@ -347,7 +353,7 @@ module uart_tb();
       end
     end
     $display("Good: %2d, Errored: %2d, Excess reference %2d, Excess DUT %2d", 
-             good, error, ref_mbx.size(), dut_mbx.size());
+             good, error, ref_mbx_num, dut_mbx_num);
   endfunction
   
 endmodule 

@@ -98,7 +98,7 @@ entity uart is
     i_rxd          : in  std_logic;                    --receive serial data (asynchronous)
     o_txd          : out std_logic;                    --transmit serial data
     --Cpu register interface
-    i_addr         : in  std_logic_vector(15 downto 0);             --highest index is msb of address.
+    i_addr         : in  std_logic_vector;             --highest index is msb of address.
     i_write_enable : in  std_logic;                    --high for 1 clk period for a write
     i_read_enable  : in  std_logic;                    --high for 1 clk period for a read
     i_data         : in  std_logic_vector(7 downto 0);
